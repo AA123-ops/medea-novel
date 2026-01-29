@@ -1,65 +1,108 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { getDeviceId } from '@/utils/device';
 
 export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+  const [htmlContent, setHtmlContent] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [inputCode, setInputCode] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // 尝试加载小说
+  const loadChapter = async (code: string) => {
+    if (!code) return;
+    setLoading(true);
+    setErrorMsg('');
+
+    try {
+      const deviceId = getDeviceId();
+      
+      const res = await fetch('/api/read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, deviceId }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setHtmlContent(data.html);
+        localStorage.setItem('my_book_code', code);
+      } else {
+        setErrorMsg(data.error || '出错了');
+      }
+    } catch (err) {
+      setErrorMsg('网络连接失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const savedCode = localStorage.getItem('my_book_code');
+    if (savedCode) {
+      setInputCode(savedCode);
+      loadChapter(savedCode);
+    }
+  }, []);
+
+  if (htmlContent) {
+    return (
+      <div className="w-full h-screen bg-black">
+        <iframe 
+          srcDoc={htmlContent}
+          className="w-full h-full border-none"
+          title="Reader"
+          sandbox="allow-scripts allow-same-origin" 
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+        <button 
+          onClick={() => {
+            setHtmlContent('');
+            localStorage.removeItem('my_book_code');
+            window.location.reload();
+          }}
+          className="fixed bottom-4 right-4 text-xs text-gray-500 hover:text-white bg-black/50 px-2 py-1 rounded"
+        >
+          退出阅读
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-black flex flex-col items-center justify-center p-4 font-serif text-gray-300">
+      <div className="max-w-md w-full text-center space-y-8">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold tracking-[0.2em] text-red-900" style={{ textShadow: '0 0 20px rgba(139,0,0,0.5)' }}>
+            MEDEA'S CURSE
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+          <p className="text-xs text-gray-600 tracking-widest uppercase">The Oath of the Betrayed</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+
+        <div className="bg-gray-900/50 p-8 border border-red-900/30 rounded-lg backdrop-blur-sm shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-900 to-transparent"></div>
+          <div className="space-y-6">
+            <input 
+              type="text" 
+              placeholder="输入誓约之码 (TEST-9999)" 
+              value={inputCode}
+              onChange={(e) => setInputCode(e.target.value)}
+              className="w-full bg-black border border-gray-800 text-center p-3 text-red-500 tracking-widest focus:outline-none focus:border-red-800 transition-colors placeholder-gray-800"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <button 
+              onClick={() => loadChapter(inputCode)}
+              disabled={loading}
+              className="w-full border border-red-900/50 text-red-700 hover:bg-red-900/20 hover:text-red-500 py-3 px-6 tracking-[0.3em] transition-all duration-500 uppercase text-sm"
+            >
+              {loading ? 'Verifying...' : 'Unlock Seal'}
+            </button>
+            {errorMsg && (
+              <p className="text-red-500 text-xs mt-4 animate-pulse">{errorMsg}</p>
+            )}
+          </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
