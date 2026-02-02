@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getDeviceId } from '@/utils/device';
 import { supabase } from '@/utils/supabase';
 
@@ -53,11 +53,14 @@ const IconX = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" v
 const IconChevronLeft = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>;
 const IconLibrary = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>;
 const IconWarning = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>;
+const IconPlay = ({ className }: { className?: string }) => <svg className={className || "w-5 h-5"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+const IconPause = ({ className }: { className?: string }) => <svg className={className || "w-5 h-5"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+const IconSpeed = ({ className }: { className?: string }) => <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>;
 
 // ==================== 🎯 主组件 ====================
 export default function Home() {
   const [view, setView] = useState<'HOME' | 'BOOKSHELF' | 'READ' | 'LOGIN_MODAL'>('HOME');
-  const [themeMode, setThemeMode] = useState('dark');
+  const [themeMode, setThemeMode] = useState('light');
   const t = THEMES[themeMode];
 
   const [loading, setLoading] = useState(false);
@@ -77,6 +80,38 @@ export default function Home() {
   });
   const [showRegisterSuccess, setShowRegisterSuccess] = useState(false);
   const [registeredCredentials, setRegisteredCredentials] = useState({ username: '', password: '' });
+
+  // ==================== 📜 自动滚动逻辑 (新增) ====================
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [autoScroll, setAutoScroll] = useState(false);
+  const [scrollSpeed, setScrollSpeed] = useState(3); // 1-10, 默认为3
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (autoScroll && iframeRef.current && iframeRef.current.contentWindow) {
+      const win = iframeRef.current.contentWindow;
+      // 速度算法：数值越大，间隔越短 (滚得越快)
+      // 1级 = 50ms滚1px, 10级 = 5ms滚1px
+      const delay = Math.max(5, 55 - (scrollSpeed * 5));
+
+      interval = setInterval(() => {
+        // 检测是否到底
+        if (win.scrollY + win.innerHeight >= win.document.body.scrollHeight - 2) {
+          // 可选：到底后自动翻页，这里先设为停止
+          setAutoScroll(false);
+        } else {
+          win.scrollBy(0, 1);
+        }
+      }, delay);
+    }
+    return () => clearInterval(interval);
+  }, [autoScroll, scrollSpeed, view]); // view 变化时也要重置
+
+  // 翻页时停止自动滚动
+  useEffect(() => {
+    setAutoScroll(false);
+  }, [bookData?.currentSlug]);
+
 
   // ==================== 🚀 初始化 ====================
   useEffect(() => {
@@ -346,8 +381,17 @@ export default function Home() {
                 </div>
               ) : (
                 // 游客模式 - 空状态或简单提示
-                <div className="text-xs opacity-50 text-center">
-                  游客模式
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-center gap-1 text-yellow-600 dark:text-yellow-500 opacity-80">
+                    <IconWarning />
+                    <span>游客模式 (记录不保存)</span>
+                  </div>
+                  <button
+                    onClick={() => setView('LOGIN_MODAL')}
+                    className={`w-full py-2.5 rounded font-bold border ${t.border} ${t.panel} active:scale-95 transition-transform`}
+                  >
+                    立即登录 / 注册
+                  </button>
                 </div>
               )}
             </div>
@@ -399,6 +443,22 @@ export default function Home() {
             )}
             <ThemeSwitcher />
           </header>
+          {/* 👇👇👇 新增代码开始：手机端游客警告条 👇👇👇 */}
+          {isMobile && !user && (
+            <div className={`flex-none px-4 py-2 text-xs flex items-center justify-between border-b ${t.border} bg-yellow-500/10`}>
+              <div className="flex items-center gap-2 opacity-90 text-yellow-600 dark:text-yellow-500">
+                <IconWarning />
+                <span>游客模式，进度无法保存</span>
+              </div>
+              <button
+                onClick={() => setView('LOGIN_MODAL')}
+                className={`px-3 py-1 rounded border shadow-sm ${t.panel} ${t.border} hover:opacity-80`}
+              >
+                登录
+              </button>
+            </div>
+          )}
+          {/* 👆👆👆 新增代码结束 👆👆👆 */}
 
           {/* 内容区 */}
           <div className="flex-1 relative w-full h-full">
@@ -408,6 +468,7 @@ export default function Home() {
               </div>
             )}
             <iframe
+              ref={iframeRef} // 👈 新增这一行
               srcDoc={`<style>${responsiveIframeCss}</style>${bookData.html}`}
               className="w-full h-full border-none block"
               sandbox="allow-scripts allow-same-origin"
@@ -415,21 +476,57 @@ export default function Home() {
           </div>
 
           {/* 底部导航 */}
-          <footer className={`flex-none py-3 px-4 border-t ${t.border} ${t.panel} flex justify-between items-center`}>
-            <button
-              disabled={!prevChapter}
-              onClick={() => prevChapter && loadChapter(inputCode, prevChapter.slug)}
-              className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm border ${t.border} disabled:opacity-30 hover:bg-black/5 transition-all`}
-            >
-              <IconChevronLeft /> 上一章
-            </button>
-            <button
-              disabled={!nextChapter}
-              onClick={() => nextChapter && loadChapter(inputCode, nextChapter.slug)}
-              className={`px-6 py-2 rounded-lg text-sm shadow-md active:scale-95 disabled:opacity-30 transition-all ${t.accentBtn}`}
-            >
-              下一章
-            </button>
+          <footer className={`flex-none border-t ${t.border} ${t.panel}`}>
+            
+            {/* 👇👇👇 这里增加了一个限制宽度的容器，让按钮向中间靠拢 👇👇👇 */}
+            <div className="w-full max-w-4xl mx-auto flex justify-between items-center py-2 px-3 md:py-3 md:px-4 gap-2">
+              
+              {/* 上一章按钮 */}
+              <button
+                disabled={!prevChapter}
+                onClick={() => prevChapter && loadChapter(inputCode, prevChapter.slug)}
+                className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm border ${t.border} disabled:opacity-30 hover:bg-black/5 transition-all`}
+              >
+                <IconChevronLeft /> <span className="hidden md:inline">上一章</span>
+              </button>
+
+              {/* 自动滚动控制条 */}
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${t.border} bg-opacity-50`}>
+                <button
+                  onClick={() => setAutoScroll(!autoScroll)}
+                  className={`${autoScroll ? t.accent : 'opacity-60 hover:opacity-100'} transition-colors`}
+                  title={autoScroll ? "停止滚动" : "自动滚动"}
+                >
+                  {autoScroll ? <IconPause /> : <IconPlay />}
+                </button>
+
+                {/* 速度滑块 */}
+                <div className="flex items-center gap-1 w-20 md:w-32">
+                  <IconSpeed className="opacity-40 w-3 h-3 flex-shrink-0" />
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="1"
+                    value={scrollSpeed}
+                    onChange={(e) => setScrollSpeed(Number(e.target.value))}
+                    className="w-full h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-current opacity-80 hover:opacity-100"
+                    style={{ accentColor: themeMode === 'dark' ? '#ef4444' : themeMode === 'sepia' ? '#8b5e3c' : '#2563eb' }}
+                  />
+                </div>
+              </div>
+
+              {/* 下一章按钮 */}
+              <button
+                disabled={!nextChapter}
+                onClick={() => nextChapter && loadChapter(inputCode, nextChapter.slug)}
+                className={`px-4 md:px-6 py-2 rounded-lg text-sm shadow-md active:scale-95 disabled:opacity-30 transition-all ${t.accentBtn}`}
+              >
+                <span className="hidden md:inline">下一章</span>
+                <span className="md:hidden">下章</span>
+              </button>
+              
+            </div>
           </footer>
         </div>
       </div>
