@@ -3,50 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { getDeviceId } from '@/utils/device';
 import { supabase } from '@/utils/supabase';
-
-// ==================== 🎨 主题配置 ====================
-const THEMES: Record<string, any> = {
-  dark: {
-    key: 'dark',
-    name: '暗夜',
-    bg: 'bg-[#1a1a1a]',
-    fg: 'text-gray-300',
-    panel: 'bg-[#242424]',
-    border: 'border-gray-800',
-    accent: 'text-red-500',
-    accentBtn: 'bg-red-800 hover:bg-red-700 text-white',
-    input: 'bg-[#0f0f0f] border-gray-700 focus:border-red-800 text-gray-300',
-    iframeCss: 'background: #1a1a1a; color: #ccc;',
-    highlight: 'bg-red-900/30 text-red-400 border-l-4 border-red-500'
-  },
-  light: {
-    key: 'light',
-    name: '明亮',
-    bg: 'bg-gray-50',
-    fg: 'text-gray-800',
-    panel: 'bg-white',
-    border: 'border-gray-200',
-    accent: 'text-blue-600',
-    accentBtn: 'bg-blue-600 hover:bg-blue-700 text-white',
-    input: 'bg-white border-gray-300 focus:border-blue-500 text-gray-900',
-    iframeCss: 'background: #f9fafb; color: #333;',
-    highlight: 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
-  },
-  sepia: {
-    key: 'sepia',
-    name: '羊皮',
-    bg: 'bg-[#f4ecd8]',
-    fg: 'text-[#5b4636]',
-    panel: 'bg-[#e9e0c9]',
-    border: 'border-[#d3c6a6]',
-    accent: 'text-[#8b5e3c]',
-    accentBtn: 'bg-[#8b5e3c] hover:bg-[#6d4a2f] text-[#f4ecd8]',
-    input: 'bg-[#fdf6e3] border-[#d3c6a6] focus:border-[#8b5e3c] text-[#5b4636]',
-    iframeCss: 'background: #f4ecd8; color: #5b4636;',
-    highlight: 'bg-[#d3c6a6]/40 text-[#5b4636] font-bold border-l-4 border-[#8b5e3c]'
-  }
-};
-
+import { THEMES } from '@/themes/config';
 // ==================== 📦 图标组件 ====================
 const IconMenu = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>;
 const IconX = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>;
@@ -64,7 +21,10 @@ const IconEyeOff = () => <svg className="w-5 h-5" fill="none" stroke="currentCol
 export default function Home() {
   const [view, setView] = useState<'HOME' | 'BOOKSHELF' | 'READ' | 'LOGIN_MODAL'>('HOME');
   const [themeMode, setThemeMode] = useState('light');
-  const t = THEMES[themeMode];
+  // 获取当前主题配置
+  const t = THEMES[themeMode] || THEMES.light; // 加个 fallback 防止报错
+  // 👇 2. 新增这行：检查当前皮肤有没有自带特殊装饰层
+  const SkinOverlay = t.component;
 
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
@@ -292,8 +252,10 @@ export default function Home() {
           className={`w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center transition-transform ${themeMode === theme.key ? 'scale-110 ring-2 ring-current' : 'opacity-40 hover:opacity-100'
             }`}
           style={{
-            backgroundColor: theme.key === 'light' ? '#eee' : theme.key === 'sepia' ? '#f4ecd8' : '#333',
-            color: theme.key === 'light' ? '#000' : '#fff'
+            // 👇 现在直接从配置读取颜色
+            backgroundColor: theme.switcherColor,
+            // 文字颜色判断：如果是浅色按钮(light/sepia)用黑色字，否则用白色字
+            color: (theme.key === 'light' || theme.key === 'sepia') ? '#000' : '#fff'
           }}
         />
       ))}
@@ -314,7 +276,10 @@ export default function Home() {
     `;
 
     return (
-      <div className={`flex h-[100dvh] overflow-hidden font-sans ${t.bg} ${t.fg}`}>
+      // 👇 1. 在这里加上 relative (为了稳妥)
+      <div className={`flex h-[100dvh] overflow-hidden font-sans ${t.bg} ${t.fg} relative`}>
+        {/* 👇 2. 插入这一行：让阅读时也显示皮肤特效 */}
+        {SkinOverlay && <SkinOverlay />}
         {isMobile && showMenu && (
           <div className="fixed inset-0 bg-black/50 z-30 backdrop-blur-sm" onClick={() => setShowMenu(false)} />
         )}
@@ -540,8 +505,12 @@ export default function Home() {
   // ==================== 📚 书架视图 ====================
   if (view === 'BOOKSHELF') {
     return (
-      <main className={`min-h-screen p-4 md:p-8 font-sans transition-colors duration-300 ${t.bg} ${t.fg}`}>
-        <div className="max-w-6xl mx-auto">
+      // 👇 1. 在这里加上 relative
+      <main className={`min-h-screen p-4 md:p-8 font-sans transition-colors duration-300 ${t.bg} ${t.fg} relative`}>
+        {/* 👇 2. 插入这一行：让书架也显示皮肤特效 */}
+        {SkinOverlay && <SkinOverlay />}
+        {/* 👇 3. 给内容容器加上 z-10 relative，防止被特效挡住无法点击 */}
+        <div className="max-w-6xl mx-auto relative z-10">
           {/* 顶部栏 */}
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 border-b pb-6 border-current border-opacity-10">
             <div>
@@ -617,12 +586,12 @@ export default function Home() {
   // ==================== 🏠 首页视图 ====================
   return (
     <main className={`min-h-[100dvh] flex flex-col items-center justify-center p-6 font-sans transition-colors duration-300 ${t.bg} ${t.fg} relative`}>
-      {/* 主题切换器 */}
-      <div className="absolute top-4 right-4">
+      {SkinOverlay && <SkinOverlay />}
+      <div className="absolute top-4 right-4 z-20"> {/* 加个 z-20 确保按钮浮在装饰层上面 */}
         <ThemeSwitcher />
       </div>
 
-      <div className="w-full max-w-sm md:max-w-md space-y-10">
+      <div className="w-full max-w-sm md:max-w-md space-y-10 z-10 relative"> {/* 加 z-10 relative */}
         {/* Logo */}
         <div className="text-center">
           <h1 className={`text-4xl md:text-5xl font-extrabold tracking-[0.2em] ${t.accent} mb-2`}>
