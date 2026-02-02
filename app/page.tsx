@@ -56,6 +56,9 @@ const IconWarning = () => <svg className="w-5 h-5" fill="none" stroke="currentCo
 const IconPlay = ({ className }: { className?: string }) => <svg className={className || "w-5 h-5"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const IconPause = ({ className }: { className?: string }) => <svg className={className || "w-5 h-5"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const IconSpeed = ({ className }: { className?: string }) => <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>;
+// 👇👇👇 新增这两个图标 👇👇👇
+const IconEye = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>;
+const IconEyeOff = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>;
 
 // ==================== 🎯 主组件 ====================
 export default function Home() {
@@ -80,7 +83,8 @@ export default function Home() {
   });
   const [showRegisterSuccess, setShowRegisterSuccess] = useState(false);
   const [registeredCredentials, setRegisteredCredentials] = useState({ username: '', password: '' });
-
+  // 👇👇👇 新增这个状态 👇👇👇
+  const [showPassword, setShowPassword] = useState(false);
   // ==================== 📜 自动滚动逻辑 (新增) ====================
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [autoScroll, setAutoScroll] = useState(false);
@@ -477,10 +481,10 @@ export default function Home() {
 
           {/* 底部导航 */}
           <footer className={`flex-none border-t ${t.border} ${t.panel}`}>
-            
+
             {/* 👇👇👇 这里增加了一个限制宽度的容器，让按钮向中间靠拢 👇👇👇 */}
             <div className="w-full max-w-4xl mx-auto flex justify-between items-center py-2 px-3 md:py-3 md:px-4 gap-2">
-              
+
               {/* 上一章按钮 */}
               <button
                 disabled={!prevChapter}
@@ -525,7 +529,7 @@ export default function Home() {
                 <span className="hidden md:inline">下一章</span>
                 <span className="md:hidden">下章</span>
               </button>
-              
+
             </div>
           </footer>
         </div>
@@ -622,7 +626,7 @@ export default function Home() {
         {/* Logo */}
         <div className="text-center">
           <h1 className={`text-4xl md:text-5xl font-extrabold tracking-[0.2em] ${t.accent} mb-2`}>
-            MEDEA
+            DREAM
           </h1>
           <p className="text-xs uppercase tracking-[0.5em] opacity-50">
             沉浸式阅读器
@@ -691,6 +695,7 @@ export default function Home() {
               onClick={() => {
                 setView('HOME');
                 setMsg('');
+                setShowPassword(false); // 👈 建议加上这一行：关闭弹窗时，把密码重新藏起来
               }}
               className="absolute top-4 right-4 opacity-50 hover:opacity-100"
             >
@@ -713,15 +718,25 @@ export default function Home() {
                 onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })}
                 onKeyDown={(e) => e.key === 'Enter' && handleHomeLogin()}
               />
-              <input
-                className={`w-full border-2 p-4 rounded-lg outline-none ${t.input}`}
-                type="password"
-                placeholder="密码"
-                value={authForm.password}
-                onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
-                onKeyDown={(e) => e.key === 'Enter' && handleHomeLogin()}
-              />
-
+              <div className="relative">
+                <input
+                  // 注意：这里添加了 pr-12 (padding-right) 防止文字被图标遮挡
+                  className={`w-full border-2 p-4 rounded-lg outline-none pr-12 ${t.input}`}
+                  // 注意：type 变成了动态的
+                  type={showPassword ? "text" : "password"}
+                  placeholder="密码"
+                  value={authForm.password}
+                  onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                  onKeyDown={(e) => e.key === 'Enter' && handleHomeLogin()}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100 transition-opacity"
+                >
+                  {showPassword ? <IconEyeOff /> : <IconEye />}
+                </button>
+              </div>
               {/* 🆕 登录/注册双按钮 */}
               <div className="flex gap-3">
                 <button
